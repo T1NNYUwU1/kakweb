@@ -1,6 +1,16 @@
 const mongoose = require('mongoose');
 
 const projectSchema = new mongoose.Schema({
+  title: {
+    type: string,
+    required: true
+  },
+  organization: {
+    name: { type: String, required: true },
+    address: { type: String },
+    contact: { type: String },
+    email: { type: String },
+  },
   total_donations: {
     type: Number
   },
