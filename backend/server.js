@@ -14,6 +14,7 @@ app.use(express.static('public'));
 
 // Routes
 app.use('/api/projects', projectRoutes);
+app.use('/users', require('./routes/User_setting'));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
