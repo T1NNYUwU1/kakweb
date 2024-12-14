@@ -1,23 +1,33 @@
 const mongoose = require('mongoose');
 
 const projectSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  organization: { type: String, required: true },
-  category: { type: String, required: true },
-  country: { type: String, required: true },
-  projectId: { type: String, required: true },
-  currentAmount: { type: Number, default: 0 },
-  goalAmount: { type: Number, required: true },
-  donationCount: { type: Number, default: 0 },
-  summary: String,
-  challenge: String,
-  solution: String,
-  longTermImpact: String,
-  images: [String],
-  donationTiers: [{
-    amount: Number,
-    description: String
-  }]
+  total_donations: {
+    type: Number
+  },
+  goal: {
+    type: Number,
+    required: true
+  },
+  address_project: {
+    type: String,
+    required: true
+  },
+  type_project: {
+    type: String,
+    required: true
+  },
+  short_description: {
+    type: String,
+    required: true
+  },
+  long_description: {
+    type: String,
+    required: true
+  },
+  image: {
+    type: String,
+    required: true
+  }
 });
 
 module.exports = mongoose.model('Project', projectSchema);

@@ -6,19 +6,21 @@ const donationSchema = new mongoose.Schema({
     ref: 'Project',
     required: true
   },
-  amount: { 
-    type: Number, 
-    required: true 
+  donation_id: {
+    type: String,
+    required: true
   },
-  isMonthly: { 
-    type: Boolean, 
-    default: false 
+  amount: {
+    type: Number,
+    required: true
   },
-  donorName: String,
-  donorEmail: String,
-  createdAt: {
+  date: {
     type: Date,
-    default: Date.now
+    required: true
+  },
+  project: {
+    type: String,
+    required: true
   }
 });
 
