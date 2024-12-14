@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const projectSchema = new mongoose.Schema({
   title: {
-    type: string,
+    type: String,
     required: true
   },
   organization: {
@@ -38,6 +38,8 @@ const projectSchema = new mongoose.Schema({
     type: String,
     required: true
   }
-});
+},
+{ timestamps: true }
+);
 
 module.exports = mongoose.model('Project', projectSchema);

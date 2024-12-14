@@ -3,6 +3,7 @@ const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const userRoutes = require('./routes/User_setting');
 const donationRoutes = require('./routes/Donation_setting');
+const projectRoutes = require('./routes/Project_setting');
 
 // Load environment variables
 dotenv.config();
@@ -28,6 +29,7 @@ app.use(express.static('public')); // Serve static files from the "public" direc
 // Routes
 app.use('/users', userRoutes); // Routes for users
 app.use('/donations', donationRoutes); // Routes for donations
+app.use('/projects', projectRoutes); // Routes for projects
 
 // Default route for unhandled requests
 app.use((req, res, next) => {
