@@ -1,23 +1,31 @@
 const jwt = require("jsonwebtoken");
 
 const verifyToken = (req, res, next) => {
-    // ตั้งชื่อไว้ว่า token
-    const token = req.cookies?.token;
+    const authHeader = req.headers['authorization'];
+    console.log("Authorization Header:", authHeader);
 
-    if (!token)
+    const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+    console.log("Extracted Token:", token);
+
+    if (!token) {
         return res.status(401).json({ success: false, message: "Unauthorized - no token provided" });
+    }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const secret = process.env.JWT_SECRET;
+        console.log("JWT_SECRET:", secret); // Debug Log
+        if (!secret) {
+            throw new Error("JWT_SECRET is not defined in environment");
+        }
 
-        if (!decoded)
-            return res.status(401).json({ success: false, message: "Unauthorized - invalid token" });
+        const decoded = jwt.verify(token, secret);
+        console.log("Decoded Token:", decoded); // Debug Log
 
-        req.userId = decoded.userId;
-        next(); //next ที่เขียนไว้ด้านบน
+        req.user = decoded;
+        next();
     } catch (error) {
-        console.log("Error in verifyToken", error);
-        return res.status(500).json({ success: false, message: "Server error" });
+        console.error("Token verification failed:", error.message);
+        return res.status(401).json({ success: false, message: "Unauthorized - invalid token" });
     }
 };
 

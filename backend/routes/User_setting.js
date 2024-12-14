@@ -36,28 +36,38 @@ router.post('/signup', async (req, res) => {
 
 //login
 router.post('/login', async (req, res) => {
-    try {
+  try {
       const { email, password } = req.body;
+
       // Find the user by email
       const user = await User.findOne({ email });
       if (!user) {
-        return res.status(404).json({ message: 'User not found' });
+          return res.status(404).json({ message: 'User not found' });
       }
+
       // Compare the provided password with the stored hash
       const isPasswordCorrect = await bcrypt.compare(password, user.password);
       if (!isPasswordCorrect) {
-        return res.status(401).json({ message: 'Password is incorrect' });
+          return res.status(401).json({ message: 'Password is incorrect' });
       }
-      // Generate a JWT token
-      const token = jwt.sign({ email: user.email }, 'secret', { expiresIn: '1h' });
 
+      // Load the JWT_SECRET from environment variables
+      const secret = process.env.JWT_SECRET;
+      if (!secret) {
+          return res.status(500).json({ message: 'JWT Secret is not configured on the server' });
+      }
+
+      // Generate a JWT token
+      const token = jwt.sign({ email: user.email }, secret, { expiresIn: '1h' });
+
+      // Respond with the token
       res.status(200).json({ token });
-    } catch (err) {
+  } catch (err) {
       // Handle unexpected errors
-      res.status(500).json({ message: err.message });
-    }
+      console.error("Error during login:", err.message);
+      res.status(500).json({ message: 'Server error' });
   }
-);
+});
 
 //logout
 router.post('/logout', verifyToken, (req, res) => {

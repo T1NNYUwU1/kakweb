@@ -21,7 +21,10 @@ router.post('/create', verifyToken, async (req, res) => {
         }
 
         // Get userId from the token payload
-        const userId = req.user.id; // Assuming verifyToken adds user id to req.user
+        const userId = req.user?.id; // Assuming verifyToken adds user id to req.user
+        if (!userId) {
+            return res.status(401).json({ message: 'Unauthorized - no user ID found in token.' });
+        }
 
         // Check if user exists
         const user = await User.findById(userId);
@@ -41,6 +44,7 @@ router.post('/create', verifyToken, async (req, res) => {
         await donation.save();
 
         // Step 2: Add donation to user's donation_id map
+        if (!user.donation_id) user.donation_id = new Map(); // Ensure donation_id is initialized
         const donationKey = `donation_${donation._id}`;
         user.donation_id.set(donationKey, donation._id); // Add dynamically to the Map
 
@@ -51,7 +55,7 @@ router.post('/create', verifyToken, async (req, res) => {
             donation
         });
     } catch (error) {
-        console.error(error);
+        console.error('Error creating donation:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
 });
