@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
+const { v4: uuidv4 } = require('uuid'); // Import UUID
 
 const projectSchema = new mongoose.Schema({
+  project_id: { 
+    type: String, 
+    default: uuidv4, // Generate unique projectId 
+    unique: true // Ensure projectId is unique
+  },
   title: {
     type: String,
     required: true
@@ -11,10 +17,10 @@ const projectSchema = new mongoose.Schema({
     contact: { type: String },
     email: { type: String },
   },
-  total_donations: {
+  total_donations: { // จำนวนเงินที่ระดมทุนได้จนถึงปัจจุบัน
     type: Number
   },
-  goal: {
+  goal: { // เป้าหมายระดมทุน
     type: Number,
     required: true
   },
@@ -37,6 +43,10 @@ const projectSchema = new mongoose.Schema({
   image: {
     type: String,
     required: true
+  },
+  isFeatured: {
+    type: Boolean,
+    default: false
   }
 },
 { timestamps: true }

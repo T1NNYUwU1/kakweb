@@ -1,14 +1,21 @@
 const mongoose = require('mongoose');
+const User = require('./User');
 
 const donationSchema = new mongoose.Schema({
-  projectId: {
-    type: mongoose.Schema.Types.ObjectId,
+  project_id: {
+    type: String,
     ref: 'Project',
+    required: true
+  },
+  user_id: {
+    type: mongoose.Schema.Types.ObjectId, // เชื่อมกับ User Model
+    ref: 'User',
     required: true
   },
   donation_id: {
     type: String,
-    required: true
+    required: true,
+    unique: true
   },
   amount: {
     type: Number,
@@ -16,12 +23,8 @@ const donationSchema = new mongoose.Schema({
   },
   date: {
     type: Date,
-    required: true
+    default: Date.now()
   },
-  project: {
-    type: String,
-    required: true
-  }
 });
 
 module.exports = mongoose.model('Donation', donationSchema);
