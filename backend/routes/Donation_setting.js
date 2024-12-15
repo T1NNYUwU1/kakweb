@@ -63,7 +63,7 @@ router.post('/create', verifyToken, async (req, res) => {
 });
 
 // ดูข้อมูลบริจาคทั้งหมดของ project_id นั้น
-router.get('/project/:project_id', async (req, res) => {
+router.get('/project/:project_id', verifyToken, async (req, res) => {
     try {
       const { project_id } = req.params;
   
@@ -80,24 +80,42 @@ router.get('/project/:project_id', async (req, res) => {
 });
 
 // ดูรายการบริจาคทั้งหมดของผู้ใช้คนหนึ่ง
+// เขียน total-amount
 router.get('/user/:user_id', verifyToken, async (req, res) => {
-    try {
+  try {
       const { user_id } = req.params;
-  
-      const donations = await Donation.find({ user_id }).populate('project_id', 'title goal');
-      if (!donations || donations.length === 0) {
-        return res.status(404).json({ message: 'No donations found for this user.' });
+
+      // ตรวจสอบว่า user_id เป็น ObjectId ที่ถูกต้องหรือไม่
+      if (!mongoose.Types.ObjectId.isValid(user_id)) {
+          return res.status(400).json({ message: 'Invalid user ID format.' });
       }
-  
+
+      // ค้นหา Donations ตาม user_id และ populate project_id ด้วย String
+      const donations = await Donation.find({ user_id })
+          .populate({
+              path: 'project_id',
+              select: 'title goal',
+              match: {}, // ค้นหาทั้งหมดไม่ใช้เงื่อนไขเพิ่มเติม
+              options: {}, // ไม่ใส่ค่าเพิ่มเติมใน options
+              localField: 'project_id', // ระบุ field ที่เชื่อมต่อใน Donation schema
+              foreignField: 'project_id', // ระบุ field ที่เชื่อมต่อใน Project schema
+              justOne: true // ดึงข้อมูลโปรเจคที่ตรงกันเพียงอันเดียว
+          });
+
+      if (!donations || donations.length === 0) {
+          return res.status(404).json({ message: 'No donations found for this user.' });
+      }
+
       res.status(200).json(donations);
-    } catch (error) {
+  } catch (error) {
       console.error('Error fetching user donations:', error.message);
       res.status(500).json({ message: 'Server Error', error: error.message });
-    }
+  }
 });
 
+
 // คำนวณยอดเงินบริจาคทั้งหมดของ Project_id
-router.get('/total/:project_id', async (req, res) => {
+router.get('/total/:project_id', verifyToken, async (req, res) => {
     try {
       const { project_id } = req.params;
   
