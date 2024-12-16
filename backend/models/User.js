@@ -47,7 +47,28 @@ const userSchema = new mongoose.Schema({
             ref: 'Donation'
         },
         default: {}
-    }
-    });
+    },
+    isVerified: {
+        type: Boolean,
+        default: false
+    },
+    resetPasswordOTP: {
+        type: String,
+        default: null
+    },
+    resetPasswordOTPExpires: {
+        type: Date,
+        default: null
+    },
+    verificationOTP: {
+        type: String, 
+        default: null 
+    },
+    verificationOTPExpires: {
+        type: Date, 
+        default: null 
+    },
+},{timestamps: true}
+);
 
 module.exports = mongoose.model('User', userSchema);

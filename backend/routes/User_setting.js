@@ -7,14 +7,15 @@ const app = express();
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const verifyToken = require('../middleware/token.js');
+const crypto = require('crypto'); // ใช้สำหรับสร้าง OTP
+const sendMail = require('../utils/sendMail.js'); // ใช้ส่ง OTP
 
 app.use(cors());
 
-//signup
-router.post('/signup', async (req, res) => {
+// Signup Route
+router.post("/signup", async (req, res) => {
   try {
-    const { first_name, last_name, email, phone_number, password, street_address, country, state, postal_code } = req.body;
-    const user = new User({
+    const {
       first_name,
       last_name,
       email,
@@ -23,14 +24,88 @@ router.post('/signup', async (req, res) => {
       street_address,
       country,
       state,
-      postal_code
+      postal_code,
+    } = req.body;
+
+    // Check required fields
+    if (!first_name || !last_name || !email || !phone_number || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email is already registered" });
+    }
+
+    // Hash Password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Generate OTP
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+
+    // Save User to Database
+    const user = new User({
+      first_name,
+      last_name,
+      email,
+      phone_number,
+      password: hashedPassword,
+      street_address,
+      country,
+      state,
+      postal_code,
+      verificationOTP: otp,
+      verificationOTPExpires: Date.now() + 10 * 60 * 1000, // OTP expires in 10 minutes
     });
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(password, salt);
+
     await user.save();
-    res.status(201).json({ message: 'User created' });
+
+    // Send OTP to User Email
+    await sendMail(
+      email,
+      "Verify Your Email - OrangeGive",
+      `Your OTP for email verification is: <strong>${otp}</strong>`
+    );
+
+    res
+      .status(201)
+      .json({ message: "User registered successfully. Please verify your email." });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Error during signup:", error.message);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Verify OTP
+router.post("/verify-email", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    // Check if user exists
+    const user = await User.findOne({
+      email,
+      verificationOTP: otp,
+      verificationOTPExpires: { $gt: Date.now() }, // OTP ยังไม่หมดอายุ
+    });
+
+    if (!user) {
+      return res
+        .status(400)
+        .json({ message: "Invalid OTP or OTP has expired." });
+    }
+
+    // Update User Verification Status
+    user.isVerified = true;
+    user.verificationOTP = undefined;
+    user.verificationOTPExpires = undefined;
+
+    await user.save();
+
+    res.status(200).json({ message: "Email verified successfully!" });
+  } catch (error) {
+    console.error("Error verifying OTP:", error.message);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
@@ -58,7 +133,7 @@ router.post('/login', async (req, res) => {
       }
 
       // Generate a JWT token
-      const token = jwt.sign({ id: user._id, email: user.email }, secret, { expiresIn: '1h' });
+      const token = jwt.sign({ id: user._id, email: user.email }, secret, { expiresIn: '24h' });
 
       // Respond with the token
       res.status(200).json({ token });
@@ -76,22 +151,112 @@ router.post('/logout', verifyToken, (req, res) => {
   }
 );
 
-//change password
-router.post('/change-password', verifyToken, async (req, res) => {
-    try {
-      const { email, password } = req.body;
-      const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(password, salt);
-        await user.save();
-        res.status(200).json({ message: 'Password changed' });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+// Request Password Reset OTP
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
     }
+
+    // ตรวจสอบว่า User มีอยู่หรือไม่
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
-);
+
+    // สร้าง OTP ใหม่
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    user.resetPasswordOTP = otp;
+    user.resetPasswordOTPExpires = Date.now() + 10 * 60 * 1000; // หมดอายุ 10 นาที
+
+    await user.save();
+
+    // สร้าง Token สำหรับการรีเซ็ตรหัสผ่าน (หมดอายุ 10 นาที)
+    const token = jwt.sign({ id: user._id, email: user.email, purpose: 'reset-password and verify-reset-otp'},process.env.JWT_SECRET,{ expiresIn: '10m' });
+
+    // ส่ง OTP ผ่านอีเมล
+    await sendMail(
+      email,
+      'Password Reset OTP',
+      `Your OTP for password reset is: <strong>${otp}</strong>`
+    );
+
+    res.status(200).json({
+      message: 'Password reset OTP sent to your email',
+      token, // ส่ง JWT Token กลับไปให้ผู้ใช้
+    });
+  } catch (error) {
+    console.error('Error during forgot-password:', error.message);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/verify-reset-otp', verifyToken, async (req, res) => {
+  try {
+    const { otp } = req.body;
+
+    if (!otp) {
+      return res.status(400).json({ message: 'OTP is required' });
+    }
+
+    // ดึงข้อมูลผู้ใช้จาก Token
+    const userId = req.user.id;
+    const user = await User.findById(userId);
+
+    if (!user || user.resetPasswordOTP !== otp || user.resetPasswordOTPExpires < Date.now()) {
+      return res.status(400).json({ message: 'Invalid or expired OTP.' });
+    }
+
+    // ล้าง OTP หลังยืนยันสำเร็จ
+    user.resetPasswordOTP = null;
+    user.resetPasswordOTPExpires = null;
+
+    await user.save();
+
+    res.status(200).json({ message: 'OTP verified successfully.' });
+  } catch (error) {
+    console.error('Error verifying OTP:', error.message);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Reset Password with OTP
+router.post('/reset-password', verifyToken, async (req, res) => {
+  try {
+    const { newPassword, confirmPassword } = req.body;
+
+    // ตรวจสอบว่าข้อมูลถูกส่งมาครบ
+    if (!newPassword || !confirmPassword) {
+      return res.status(400).json({ message: 'Both newPassword and confirmPassword are required.' });
+    }
+
+    // ตรวจสอบว่า newPassword และ confirmPassword เหมือนกัน
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ message: 'Passwords do not match.' });
+    }
+
+    // ดึงข้อมูลผู้ใช้จาก Token ที่ถูกตรวจสอบแล้วใน Middleware verifyToken
+    const userId = req.user.id; // verifyToken ทำให้มี req.user.id ใช้งานได้
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    // แฮชรหัสผ่านใหม่
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+
+    // บันทึกรหัสผ่านใหม่
+    await user.save();
+
+    res.status(200).json({ message: 'Password reset successfully. You can now log in.' });
+  } catch (error) {
+    console.error('Error resetting password:', error.message);
+    res.status(500).json({ message: 'An error occurred while resetting the password.' });
+  }
+});
 
 module.exports = router;
