@@ -18,7 +18,8 @@ const projectSchema = new mongoose.Schema({
     email: { type: String },
   },
   total_donations: { // จำนวนเงินที่ระดมทุนได้จนถึงปัจจุบัน
-    type: Number
+    type: Number,
+    default: 0
   },
   goal: { // เป้าหมายระดมทุน
     type: Number,
