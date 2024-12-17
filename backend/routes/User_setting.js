@@ -9,6 +9,9 @@ const jwt = require('jsonwebtoken');
 const verifyToken = require('../middleware/token.js');
 const crypto = require('crypto'); // ใช้สำหรับสร้าง OTP
 const sendMail = require('../utils/sendMail.js'); // ใช้ส่ง OTP
+const multer = require('multer'); // ใช้สำหรับรูปภาพ
+const upload = require('../middleware/Image.js');
+
 
 app.use(cors());
 
@@ -65,7 +68,8 @@ router.post("/signup", async (req, res) => {
     await sendMail(
       email,
       "Verify Your Email - OrangeGive",
-      `Your OTP for email verification is: <strong>${otp}</strong>`
+      `Your OTP for email verification is: <strong>${otp}</strong><br/>
+      <strong>This OTP will expire in 10 minutes.</strong>`
     );
 
     res
@@ -180,7 +184,8 @@ router.post('/forgot-password', async (req, res) => {
     await sendMail(
       email,
       'Password Reset OTP',
-      `Your OTP for password reset is: <strong>${otp}</strong>`
+      `Your OTP for password reset is: <strong>${otp}</strong><br/>
+      <strong>This OTP will expire in 10 minutes.</strong>`
     );
 
     res.status(200).json({
@@ -222,7 +227,6 @@ router.post('/verify-reset-otp', verifyToken, async (req, res) => {
   }
 });
 
-// Reset Password with OTP
 router.post('/reset-password', verifyToken, async (req, res) => {
   try {
     const { newPassword, confirmPassword } = req.body;
@@ -252,10 +256,89 @@ router.post('/reset-password', verifyToken, async (req, res) => {
     // บันทึกรหัสผ่านใหม่
     await user.save();
 
-    res.status(200).json({ message: 'Password reset successfully. You can now log in.' });
+    // ส่งอีเมลแจ้งเตือนว่ารหัสผ่านถูกเปลี่ยนแล้ว
+    await sendMail(
+      user.email,
+      'Password Reset Successful - OrangeGive',
+      `<p>Your password has been successfully reset. If you did not initiate this request, please contact our support immediately.</p>`
+    );
+
+    res.status(200).json({ message: 'Password reset successfully. Already sent reset password email' });
   } catch (error) {
     console.error('Error resetting password:', error.message);
     res.status(500).json({ message: 'An error occurred while resetting the password.' });
+  }
+});
+
+// Delete Profile Image
+router.delete('/profile-image', verifyToken, async (req, res) => {
+  try {
+      const userId = req.user.id;
+
+      const user = await User.findById(userId);
+      if (!user) {
+          return res.status(404).json({ message: 'User not found.' });
+      }
+
+      // รีเซ็ตเป็นรูปภาพ default
+      user.image = 'default_profile.png';
+      await user.save();
+
+      res.status(200).json({ message: 'Profile image removed and set to default.', image: user.image });
+  } catch (error) {
+      console.error('Error removing profile image:', error.message);
+      res.status(500).json({ message: 'Server error.' });
+  }
+});
+
+// Update Profile Image
+router.put('/profile-image', verifyToken, upload.single('image'), async (req, res) => {
+  try {
+    const userId = req.user.id; // ดึง ID จาก Token
+
+    // ตรวจสอบว่าไฟล์ถูกอัปโหลด
+    if (!req.file) {
+      return res.status(400).json({ message: 'No image file uploaded.' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    // อัปเดตฟิลด์ image ใน User เป็น path ของไฟล์ที่อัปโหลด
+    user.image = `/images/${req.file.filename}`;
+    await user.save();
+
+    res.status(200).json({ 
+      message: 'Profile image updated successfully.', 
+      image: user.image 
+    });
+  } catch (error) {
+    console.error('Error updating profile image:', error.message);
+    res.status(500).json({ message: 'Server error.' });
+  }
+});
+
+// GET User Profile
+router.get('/profile', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id; 
+
+    // ค้นหาข้อมูล User โดยไม่รวม password
+    const user = await User.findById(userId).select('-password -resetPasswordOTP -resetPasswordOTPExpires -verificationOTP -verificationOTPExpires');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    res.status(200).json({ 
+      message: 'User profile fetched successfully.', 
+      user // ข้อมูล user
+    });
+  } catch (error) {
+    console.error('Error fetching user profile:', error.message);
+    res.status(500).json({ message: 'Server error.' });
   }
 });
 

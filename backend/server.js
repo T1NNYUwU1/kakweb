@@ -4,6 +4,7 @@ const connectDB = require('./config/db');
 const userRoutes = require('./routes/User_setting');
 const donationRoutes = require('./routes/Donation_setting');
 const projectRoutes = require('./routes/Project_setting');
+const path = require('path');
 
 // Load environment variables
 dotenv.config();
@@ -21,6 +22,9 @@ const app = express();
 
 // Connect to MongoDB
 connectDB();
+
+// Static files
+app.use("/images", express.static(path.join(__dirname, "../public")));
 
 // Middleware
 app.use(express.json()); // Parse incoming JSON requests

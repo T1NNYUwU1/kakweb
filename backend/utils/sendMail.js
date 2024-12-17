@@ -22,9 +22,11 @@ module.exports = async (email, subject, text) => {
       subject: subject,
       html: `
         <div style="font-family: Arial, sans-serif; color: #333;">
+          <p>Dear ${user.first_name},</p>
           <h3>${subject}</h3>
           <p>${text}</p>
-          <p style="font-weight: bold;">This OTP will expire in 10 minutes.</p>
+          <p>Best regards</p>
+          <p>OrangeGive Team</p>
         </div>
       `,
     };

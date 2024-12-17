@@ -13,9 +13,9 @@ const projectSchema = new mongoose.Schema({
   },
   organization: {
     name: { type: String, required: true },
-    address: { type: String },
-    contact: { type: String },
-    email: { type: String },
+    address: { type: String, required: true  },
+    contact: { type: String, required: true  },
+    email: { type: String, required: true  },
   },
   total_donations: { // จำนวนเงินที่ระดมทุนได้จนถึงปัจจุบัน
     type: Number,
@@ -25,24 +25,22 @@ const projectSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
-  address_project: {
-    type: String,
-    required: true
+  location: { 
+    type: String, 
+    enum: ['Asia', 'Europe', 'North America', 'South America', 'Africa', 'Oceania','Australia'], 
+    required: true 
   },
-  type_project: {
-    type: String,
-    required: true
-  },
-  short_description: {
-    type: String,
-    required: true
+  category: { 
+    type: String, 
+    enum: ['Education', 'Health', 'Technology', 'Environment', 'Arts & Culture', 'Disaster'], 
+    required: true 
   },
   long_description: {
     type: String,
     required: true
   },
   image: {
-    type: String,
+    type: [String], // เก็บเป็น Array ของ Path รูปภาพ
     required: true
   },
   isFeatured: {

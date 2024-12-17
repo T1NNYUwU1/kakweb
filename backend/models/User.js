@@ -38,7 +38,7 @@ const userSchema = new mongoose.Schema({
     },
     image: {
         type: String,
-        default: "0"
+        default: "images/default_profile.png"
     },
     donation_id: {
         type: Map,
